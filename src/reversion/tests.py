@@ -778,6 +778,19 @@ class RevisionMiddlewareTest(ReversionTestBase):
 
     urls = "reversion.tests"
 
+    def setUp(self):
+        super(RevisionMiddlewareTest, self).setUp()
+        self.original_middlewares = settings.MIDDLEWARE_CLASSES
+        settings.MIDDLEWARE_CLASSES = list(settings.MIDDLEWARE_CLASSES)
+        try:
+            settings.MIDDLEWARE_CLASSES.remove('utils.middleware.UserAgentMiddleware')
+        except ValueError:
+            pass
+
+    def tearDown(self):
+        super(RevisionMiddlewareTest, self).tearDown()
+        self.MIDDLEWARE_CLASSES = self.original_middlewares
+
     def testRevisionMiddleware(self):
         self.assertEqual(Revision.objects.count(), 0)
         self.assertEqual(Version.objects.count(), 0)
