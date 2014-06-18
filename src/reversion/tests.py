@@ -774,22 +774,31 @@ urlpatterns = patterns("",
 )
 
 
-class RevisionMiddlewareTest(ReversionTestBase):
+class OverrideMiddlewares(object):
+
+    def removeMiddleware(self, name):
+        self.original_middlewares = settings.MIDDLEWARE_CLASSES
+        settings.MIDDLEWARE_CLASSES = list(settings.MIDDLEWARE_CLASSES)
+        try:
+            settings.MIDDLEWARE_CLASSES.remove(name)
+        except ValueError:
+            pass
+
+    def restore_middlewares(self):
+        settings.MIDDLEWARE_CLASSES = self.original_middlewares
+
+
+class RevisionMiddlewareTest(OverrideMiddlewares, ReversionTestBase):
 
     urls = "reversion.tests"
 
     def setUp(self):
         super(RevisionMiddlewareTest, self).setUp()
-        self.original_middlewares = settings.MIDDLEWARE_CLASSES
-        settings.MIDDLEWARE_CLASSES = list(settings.MIDDLEWARE_CLASSES)
-        try:
-            settings.MIDDLEWARE_CLASSES.remove('utils.middleware.UserAgentMiddleware')
-        except ValueError:
-            pass
+        self.removeMiddleware('utils.middleware.UserAgentMiddleware')
 
     def tearDown(self):
         super(RevisionMiddlewareTest, self).tearDown()
-        self.MIDDLEWARE_CLASSES = self.original_middlewares
+        self.restore_middlewares()
 
     def testRevisionMiddleware(self):
         self.assertEqual(Revision.objects.count(), 0)
@@ -809,7 +818,7 @@ class RevisionMiddlewareTest(ReversionTestBase):
         self.assertRaises(ImproperlyConfigured, lambda: self.client.get("/double/"))
 
 
-class VersionAdminTest(TestCase):
+class VersionAdminTest(OverrideMiddlewares, TestCase):
 
     urls = "reversion.tests"
 
@@ -837,6 +846,11 @@ class VersionAdminTest(TestCase):
                 username = "foo",
                 password = "bar",
             )
+        self.removeMiddleware('utils.middleware.UserAgentMiddleware')
+
+    def tearDown(self):
+        super(VersionAdminTest, self).tearDown()
+        self.restore_middlewares()
 
     @skipUnless('django.contrib.admin' in settings.INSTALLED_APPS,
                 "django.contrib.admin not activated")
